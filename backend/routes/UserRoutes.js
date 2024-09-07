@@ -41,6 +41,26 @@ router.get('/profile', authMiddleware, isAuthenticated, async (req, res) => {
     }
 });
 
+router.post('/', cloudinaryUploader.single("avatar"), async (req, res) => { 
+    try { 
+        const userData = req.body; 
+        if (req.file) { 
+            userData.avatar = req.file.path; 
+        } else {
+            // Se non viene fornito un avatar, rimuovi il campo dal userData
+            delete userData.avatar;
+        }
+        const user = new User(userData); 
+        const newUser = await user.save(); 
+        //Rimuovo la password per sicurezza 
+        const userRes = newUser.toObject(); 
+        delete userRes.password; 
+        res.status(201).json(userRes); 
+    } catch (err) { 
+        res.status(400).json({ message: err.message }); 
+    } 
+});
+
 // UPDATE profilo utente
 router.patch('/profile', authMiddleware, isAuthenticated, cloudinaryUploader.single("avatar"), async (req, res) => {
     try {

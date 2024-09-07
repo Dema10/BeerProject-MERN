@@ -6,7 +6,7 @@ const userSchema = new mongoose.Schema({
     surname: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    avatar: { type: String, default: "https://example.com/default-avatar.jpg" },
+    avatar: { type: String, default: "https://tse3.mm.bing.net/th?id=OIP.Cl56H6WgxJ8npVqyhefTdQAAAA&pid=Api&P=0&h=180" },
     role: { type: String, enum: ['user', 'admin'], default: 'user' },
     orders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
     likedBeers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Beer' }],
