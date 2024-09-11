@@ -46,6 +46,8 @@ export const getUserData = async () => {
 };
 
 // Users
+export const getAllUsers = (params) => api.get('/users', { params });
+
 export const registerUser = (userData) => api.post('/users', userData, {
     headers: {
         'Content-Type': 'multipart/form-data',
@@ -57,6 +59,9 @@ export const updateUserProfile = (userData) => api.patch('/users/profile', userD
         'Content-Type': 'multipart/form-data',
     },
 });
+
+export const deleteUserAccount = (userId) => api.delete(`/users/${userId}`);
+
 export const getUserLikedBeers = () => api.get('/users/liked-beers');
 export const likeBeer = (beerId) => api.post(`/users/like-beer/${beerId}`);
 export const unlikeBeer = (beerId) => api.delete(`/users/unlike-beer/${beerId}`);
@@ -81,12 +86,14 @@ export const getComments = (beerId) => api.get(`/comments/beer/${beerId}`);
 export const addComment = (commentData) => api.post('/comments', commentData);
 export const updateComment = (commentId, commentData) => api.patch(`/comments/${commentId}`, commentData);
 export const deleteComment = (commentId) => api.delete(`/comments/${commentId}`);
+export const addReplyToComment = (commentId, replyData) => api.post(`/comments/${commentId}/reply`, replyData);
 
 // Orders
 export const getOrders = () => api.get('/orders');
 export const getUserOrders = () => api.get('/orders/myorders');
 export const createOrder = (orderData) => api.post('/orders', orderData);
 export const updateOrderStatus = (orderId, status) => api.patch(`/orders/${orderId}/status`, { status });
+export const deleteOrder = (orderId) => api.delete(`/orders/${orderId}`);
 
 // Production
 export const getProductions = () => api.get('/productions');
@@ -102,6 +109,7 @@ export const createRecipe = (recipeData) => api.post('/recipes', recipeData);
 export const updateRecipe = (id, recipeData) => api.patch(`/recipes/${id}`, recipeData);
 export const deleteRecipe = (id) => api.delete(`/recipes/${id}`);
 export const getRecipesForBeer = (beerId) => api.get(`/recipes/beer/${beerId}`);
+export const associateRecipeToBeer = (recipeId, beerId) => api.post(`/recipes/${recipeId}/associate-beer/${beerId}`);
 
 // Stock Materials
 export const getStockMaterials = () => api.get('/stock-materials');
@@ -118,5 +126,11 @@ export const updateStockMaterial = (id, materialData) => api.patch(`/stock-mater
 });
 export const deleteStockMaterial = (id) => api.delete(`/stock-materials/${id}`);
 
+// Cart
+export const getCart = () => api.get('/cart');
+export const addToCart = (data) => api.post('/cart/add', data);
+export const updateCartItem = (itemId, data) => api.patch(`/cart/update/${itemId}`, data);
+export const removeFromCart = (itemId) => api.delete(`/cart/remove/${itemId}`);
+export const checkout = () => api.post('/cart/checkout');
 
 export default api;

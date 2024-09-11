@@ -10,6 +10,7 @@ import ProductionRoutes from './routes/ProductionRoutes.js';
 import RecipeRoutes from './routes/RecipeRoutes.js';
 import StockMaterialRoutes from './routes/StockMaterialRoutes.js';
 import OrdersRoutes from './routes/OrdersRoutes.js';
+import CartRoutes from './routes/CartRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import { badRequestHandler, authorizedHandler, notFoundHandler, genericErrorHandler } from './middlewares/errorHandlers.js';
 
@@ -30,6 +31,7 @@ app.use('/auth', authRoutes);
 app.use('/users', UserRoutes);
 app.use('/beers', BeerRoutes);
 app.use('/orders', OrdersRoutes);
+app.use('/cart', CartRoutes);
 app.use('/productions', ProductionRoutes);
 app.use('/recipes', RecipeRoutes);
 app.use('/stock-materials', StockMaterialRoutes);

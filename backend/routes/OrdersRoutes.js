@@ -5,6 +5,26 @@ import { authMiddleware, isAdmin, isAuthenticated } from '../middlewares/authMid
 
 const router = express.Router();
 
+// Funzione di utilità per verificare la disponibilità e calcolare il prezzo totale
+const validateOrderAndCalculateTotal = async (beers) => {
+    let total = 0;
+    for (let item of beers) {
+        const beer = await Beer.findById(item.beer);
+        if (!beer) throw new Error(`Birra con id ${item.beer} non trovata`);
+
+        // Trova lo stock della birra (assumiamo che il nome dello stock corrisponda al nome della birra)
+        const stock = await StockMaterial.findOne({ name: beer.name, type: 'bottiglia' });
+        if (!stock) throw new Error(`Stock non trovato per la birra ${beer.name}`);
+
+        if (stock.quantity < item.quantity) {
+            throw new Error(`Quantità insufficiente per ${beer.name}. Disponibili: ${stock.quantity}`);
+        }
+
+        total += stock.price * item.quantity;
+    }
+    return Number(total.toFixed(2));
+};
+
 // GET all orders (admin only)
 router.get('/', authMiddleware, isAdmin, async (req, res) => {
     try {
@@ -31,9 +51,23 @@ router.get('/', authMiddleware, isAdmin, async (req, res) => {
 // GET user's orders
 router.get('/myorders', authMiddleware, isAuthenticated, async (req, res) => {
     try {
+        const { page = 1, limit = 10, sort = '-createdAt' } = req.query;
         const orders = await Order.find({ user: req.user._id })
-            .populate('beers.beer', 'name price');
-        res.json(orders);
+            .populate('beers.beer', 'name price')
+            .sort(sort)
+            .limit(limit * 1)
+            .skip((page - 1) * limit);
+
+        const count = await Order.countDocuments({ user: req.user._id });
+
+        res.json({
+            orders,
+            currentPage: parseInt(page),
+            totalPages: Math.ceil(count / limit),
+            totalOrders: count,
+            hasNextPage: page * limit < count,
+            hasPrevPage: page > 1
+        });
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
@@ -41,19 +75,54 @@ router.get('/myorders', authMiddleware, isAuthenticated, async (req, res) => {
 
 // POST a new order
 router.post('/', authMiddleware, isAuthenticated, async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
+        const { beers } = req.body;
+        
+        const totalPrice = await validateOrderAndCalculateTotal(beers);
+
+        // Crea e salva l'ordine
         const order = new Order({
             user: req.user._id,
-            beers: req.body.beers,
-            totalPrice: req.body.totalPrice
+            beers: await Promise.all(beers.map(async item => {
+                const beer = await Beer.findById(item.beer);
+                const stock = await StockMaterial.findOne({ name: beer.name, type: 'bottiglia' });
+                return {
+                    beer: item.beer,
+                    quantity: item.quantity,
+                    price: stock.price
+                };
+            })),
+            totalPrice: totalPrice,
+            status: 'pending'
         });
-        const newOrder = await order.save();
+        await order.save({ session });
 
-        // Update user's orders
-        await User.findByIdAndUpdate(req.user._id, { $push: { orders: newOrder._id } });
+        // Aggiorna il magazzino
+        for (let item of beers) {
+            const beer = await Beer.findById(item.beer);
+            await StockMaterial.findOneAndUpdate(
+                { name: beer.name, type: 'bottiglia' },
+                { $inc: { quantity: -item.quantity } },
+                { session }
+            );
+        }
 
-        res.status(201).json(newOrder);
+        // Aggiorna gli ordini dell'utente
+        await User.findByIdAndUpdate(req.user._id, 
+            { $push: { orders: order._id } },
+            { session }
+        );
+
+        await session.commitTransaction();
+        session.endSession();
+
+        res.status(201).json(order);
     } catch (err) {
+        await session.abortTransaction();
+        session.endSession();
         res.status(400).json({ message: err.message });
     }
 });

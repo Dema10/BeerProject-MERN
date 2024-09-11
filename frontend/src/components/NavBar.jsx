@@ -3,6 +3,7 @@ import { Navbar, Nav, Container, NavDropdown, Image } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
 import { getUserData } from '../services/api';
 import { BoxArrowRight, Person, PersonGear } from "react-bootstrap-icons";
+import Cart from './Cart';
 
 export default function NavBar() {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -54,13 +55,14 @@ export default function NavBar() {
           <Nav className="me-auto">
             <Nav.Link as={Link} to="/">Home</Nav.Link>
             {isLoggedIn && user && user.role !== 'admin' && (
-              <Nav.Link as={Link} to="/beers">Beers</Nav.Link>
+              <Nav.Link as={Link} to="/dashboard">My Dashboard</Nav.Link>
             )}
             {user && user.role === 'admin' && (
               <Nav.Link as={Link} to="/admin/dashboard">Dashboard</Nav.Link>
             )}
           </Nav>
           <Nav>
+            {isLoggedIn && user && user.role !== 'admin' && <Cart />}
             {isLoggedIn ? (
               <NavDropdown 
                 title={
