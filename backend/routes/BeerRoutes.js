@@ -92,7 +92,7 @@ router.patch('/:id', authMiddleware, isAdmin, cloudinaryUploader.single("image")
 });
 
 // DELETE a beer (admin only)
-router.delete('/:id', authMiddleware, isAdmin, async (req, res) => {
+router.delete('/:id', cloudinaryUploader.single("image"), authMiddleware, isAdmin, async (req, res) => {
     try {
         const beer = await Beer.findById(req.params.id);
         if (!beer) {
@@ -101,14 +101,17 @@ router.delete('/:id', authMiddleware, isAdmin, async (req, res) => {
 
         if (beer.image) {
             const publicId = `Beer-image/${beer.image.split('/').pop().split('.')[0]}`;
+            console.log("Extracted publicId:", publicId);
             try {
-                await cloudinary.uploader.destroy(publicId);
+                const result = await cloudinary.uploader.destroy(publicId);
+                console.log("Cloudinary deletion result:", result);
             } catch (cloudinaryError) {
                 console.error("Errore nell'eliminazione dell'immagine:", cloudinaryError);
             }
         }
 
         await Beer.findByIdAndDelete(req.params.id);
+        
         res.json({ message: "Birra e immagine eliminate" });
     } catch (err) {
         res.status(500).json({ message: err.message });

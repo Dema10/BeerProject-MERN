@@ -12,6 +12,7 @@ import StockMaterialRoutes from './routes/StockMaterialRoutes.js';
 import OrdersRoutes from './routes/OrdersRoutes.js';
 import CartRoutes from './routes/CartRoutes.js';
 import authRoutes from './routes/authRoutes.js';
+import CarouselImageRoutes from './routes/CarouselImageRoutes.js';
 import { badRequestHandler, authorizedHandler, notFoundHandler, genericErrorHandler } from './middlewares/errorHandlers.js';
 
 dotenv.config();
@@ -36,6 +37,7 @@ app.use('/productions', ProductionRoutes);
 app.use('/recipes', RecipeRoutes);
 app.use('/stock-materials', StockMaterialRoutes);
 app.use('/comments', CommentsRoutes);
+app.use('/carousel-images', CarouselImageRoutes);
 
 const PORT = process.env.PORT || 3003;
 

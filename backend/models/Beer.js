@@ -8,10 +8,18 @@ const beerSchema = new mongoose.Schema({
     image: { type: String },
     likes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     comments: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Comment' }],
-    inProduction: { type: Boolean, default: true }
+    inProduction: { type: Boolean, default: true },
+    isNew: { type: Boolean, default: true },
+    createdAt: { type: Date, default: Date.now }
 }, {
     timestamps: true,
     collection: 'Beers'
 });
+
+// Metodo per verificare se la birra è ancora "nuova"
+beerSchema.methods.isStillNew = function() {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    return this.createdAt > sevenDaysAgo;
+};
 
 export default mongoose.model('Beer', beerSchema);

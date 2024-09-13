@@ -65,9 +65,11 @@ router.patch('/:id', authMiddleware, isAdmin, cloudinaryUploader.single("img"), 
 
         if (req.file) {
             if (oldStockMaterial.img) {
-                const publicId = `StockMaterial-image/${oldStockMaterial.img.split('/').pop().split('.')[0]}`;
+                const publicId = `Beer-image/${oldStockMaterial.img.split('/').pop().split('.')[0]}`;
+                console.log("Extracted publicId:", publicId);
                 try {
-                    await cloudinary.uploader.destroy(publicId);
+                    const result = await cloudinary.uploader.destroy(publicId);
+                    console.log("Cloudinary deletion result:", result);
                 } catch (cloudinaryError) {
                     console.error("Errore nell'eliminazione della vecchia immagine:", cloudinaryError);
                 }
@@ -88,17 +90,19 @@ router.patch('/:id', authMiddleware, isAdmin, cloudinaryUploader.single("img"), 
 });
 
 // DELETE a stock material (admin only)
-router.delete('/:id', authMiddleware, isAdmin, async (req, res) => {
+router.delete('/:id', cloudinaryUploader.single("img"), authMiddleware, isAdmin, async (req, res) => {
     try {
         const stockMaterial = await StockMaterial.findById(req.params.id);
         if (!stockMaterial) return res.status(404).json({ message: 'Materiale non trovato' });
 
         if (stockMaterial.img) {
-            const publicId = `StockMaterial-image/${stockMaterial.img.split('/').pop().split('.')[0]}`;
+            const publicId = `Beer-image/${oldStockMaterial.img.split('/').pop().split('.')[0]}`;
+            console.log("Extracted publicId:", publicId);
             try {
-                await cloudinary.uploader.destroy(publicId);
+                const result = await cloudinary.uploader.destroy(publicId);
+                console.log("Cloudinary deletion result:", result);
             } catch (cloudinaryError) {
-                console.error("Errore nell'eliminazione dell'immagine:", cloudinaryError);
+                console.error("Errore nell'eliminazione della vecchia immagine:", cloudinaryError);
             }
         }
 

@@ -67,7 +67,7 @@ export const likeBeer = (beerId) => api.post(`/users/like-beer/${beerId}`);
 export const unlikeBeer = (beerId) => api.delete(`/users/unlike-beer/${beerId}`);
 
 // Beers
-export const getBeers = (params) => api.get('/beers', { params });
+export const getBeers = () => api.get('/beers');
 export const getBeer = (id) => api.get(`/beers/${id}`);
 export const createBeer = (beerData) => api.post('/beers', beerData, {
     headers: {
@@ -132,5 +132,19 @@ export const addToCart = (data) => api.post('/cart/add', data);
 export const updateCartItem = (itemId, data) => api.patch(`/cart/update/${itemId}`, data);
 export const removeFromCart = (itemId) => api.delete(`/cart/remove/${itemId}`);
 export const checkout = () => api.post('/cart/checkout');
+
+// Carousel Images
+export const getCarouselImages = () => api.get('/carousel-images');
+export const createCarouselImage = (imageData) => api.post('/carousel-images', imageData, {
+    headers: {
+        'Content-Type': 'multipart/form-data',
+    },
+});
+export const updateCarouselImage = (id, imageData) => api.patch(`/carousel-images/${id}`, imageData, {
+    headers: {
+        'Content-Type': 'multipart/form-data',
+    },
+});
+export const deleteCarouselImage = (id) => api.delete(`/carousel-images/${id}`);
 
 export default api;

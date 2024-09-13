@@ -69,9 +69,11 @@ router.patch('/profile', authMiddleware, isAuthenticated, cloudinaryUploader.sin
 
         if (req.file) {
             if (oldUser.avatar) {
-                const publicId = `User-avatar/${oldUser.avatar.split('/').pop().split('.')[0]}`;
+                const publicId = `Beer-image/${oldUser.avatar.split('/').pop().split('.')[0]}`;
+                console.log("Extracted publicId:", publicId);
                 try {
-                    await cloudinary.uploader.destroy(publicId);
+                    const result = await cloudinary.uploader.destroy(publicId);
+                    console.log("Cloudinary deletion result:", result);
                 } catch (cloudinaryError) {
                     console.error("Errore nell'eliminazione del vecchio avatar:", cloudinaryError);
                 }
@@ -105,7 +107,7 @@ router.patch('/:id', authMiddleware, isAdmin, async (req, res) => {
 });
 
 // DELETE user account
-router.delete('/:id', authMiddleware, async (req, res) => {
+router.delete('/:id', cloudinaryUploader.single("avatar"), authMiddleware, async (req, res) => {
     try {
         const userToDelete = await User.findById(req.params.id);
         
@@ -126,9 +128,11 @@ router.delete('/:id', authMiddleware, async (req, res) => {
             await userToDelete.save();
 
             if (userToDelete.avatar) {
-                const publicId = `User-avatar/${userToDelete.avatar.split('/').pop().split('.')[0]}`;
+                const publicId = `Beer-image/${oldUser.avatar.split('/').pop().split('.')[0]}`;
+                console.log("Extracted publicId:", publicId);
                 try {
-                    await cloudinary.uploader.destroy(publicId);
+                    const result = await cloudinary.uploader.destroy(publicId);
+                    console.log("Cloudinary deletion result:", result);
                 } catch (cloudinaryError) {
                     console.error("Errore nell'eliminazione dell'avatar:", cloudinaryError);
                 }

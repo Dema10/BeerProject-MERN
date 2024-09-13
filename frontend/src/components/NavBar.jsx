@@ -6,6 +6,7 @@ import { BoxArrowRight, Person, PersonGear } from "react-bootstrap-icons";
 import Cart from './Cart';
 
 export default function NavBar() {
+    
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [user, setUser] = useState(null);
     const navigate = useNavigate();
@@ -79,14 +80,14 @@ export default function NavBar() {
                   <div className="m-2 ms-3">
                     <img src={user.avatar} alt={user.name} style={{width: '50px', height: '50px'}}/>
                   </div>
-                  <div className="m-2">
+                  <div className="m-2 me-3">
                     <h5 className="mb-0 text-nowrap">{user.name} {user.surname}</h5>
                     <p className="mb-0 opacity-50">{user.email}</p>
                   </div>
                 </div>
                 <NavDropdown.Divider style={{borderTopColor:"#00ff84"}}/>
                 <div className="d-flex flex-column">
-                  <Link to="/profile" className="custom-link text-decoration-none ps-2 mt-2">
+                  <Link to="/profile" className="custom-link text-decoration-none ps-2 my-2">
                     <Person className="pb-1 fs-5" /> Profile
                   </Link>
                   {user.role === 'admin' && (
