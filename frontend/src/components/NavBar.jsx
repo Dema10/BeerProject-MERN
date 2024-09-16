@@ -59,7 +59,10 @@ export default function NavBar() {
               <Nav.Link as={Link} to="/dashboard">My Dashboard</Nav.Link>
             )}
             {user && user.role === 'admin' && (
-              <Nav.Link as={Link} to="/admin/dashboard">Dashboard</Nav.Link>
+              <>
+                <Nav.Link as={Link} to="/admin/dashboard">Dashboard</Nav.Link>
+                <Nav.Link as={Link} to="/admin/new-product">Aggiungi stock</Nav.Link>
+              </>
             )}
           </Nav>
           <Nav>
@@ -70,7 +73,7 @@ export default function NavBar() {
                   <Image 
                     src={user.avatar}
                     roundedCircle 
-                    style={{ width: '30px', height: '30px' }} 
+                    style={{ width: '35px', height: '35px' }} 
                   />
                 }
                 menuVariant="dark"

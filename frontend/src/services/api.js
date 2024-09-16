@@ -82,7 +82,16 @@ export const updateBeer = (id, beerData) => api.patch(`/beers/${id}`, beerData, 
 export const deleteBeer = (id) => api.delete(`/beers/${id}`);
 
 // Comments
-export const getComments = (beerId) => api.get(`/comments/beer/${beerId}`);
+export const getComments = async (beerId) => {
+    try {
+      const response = await api.get(`/comments/beer/${beerId}`);
+      console.log('Risposta completa dei commenti:', response);
+      return response.data;
+    } catch (error) {
+      console.error('Errore nel recupero dei commenti:', error);
+      throw error;
+    }
+  };
 export const addComment = (commentData) => api.post('/comments', commentData);
 export const updateComment = (commentId, commentData) => api.patch(`/comments/${commentId}`, commentData);
 export const deleteComment = (commentId) => api.delete(`/comments/${commentId}`);

@@ -119,7 +119,7 @@ export default function UserProfile() {
             <>
               <h1>{user.name} {user.surname}</h1>
               <p className='fs-3'>Email: {user.email}</p>
-              <p className='fs-4'>Ruolo: {user.role}<small className='opacity-50'> (non mdoficabile)</small></p>
+              <p className='fs-4'>Ruolo: {user.role}{user && user.role !== 'admin' &&<small className='opacity-50'> (non mdoficabile)</small>}</p>
               <Button variant="warning" onClick={handleEditClick}>
                 Modifica
               </Button>

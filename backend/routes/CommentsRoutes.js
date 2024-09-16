@@ -5,36 +5,51 @@ import { authMiddleware, isAdmin, isAuthenticated } from '../middlewares/authMid
 
 const router = express.Router();
 
-// GET comments for a specific beer
+// GET route to populate replies
 router.get('/beer/:beerId', async (req, res) => {
     try {
-        const comments = await Comment.find({ beer: req.params.beerId })
-            .populate('user', 'name avatar')
-            .populate('replies.user', 'name avatar');
-        res.json(comments);
+      const comments = await Comment.find({ beer: req.params.beerId, parentId: null, deletedAt: null })
+        .populate('user', 'name avatar role')
+        .lean();
+  
+      for (let comment of comments) {
+        comment.replies = await Comment.find({ parentId: comment._id, deletedAt: null })
+          .populate('user', 'name avatar role')
+          .lean();
+      }
+  
+      res.json(comments);
     } catch (err) {
-        res.status(500).json({ message: err.message });
+      res.status(500).json({ message: err.message });
     }
-});
+  });
 
-// POST a new comment
+// POST a new comment or reply
 router.post('/', authMiddleware, isAuthenticated, async (req, res) => {
     try {
+        const { beerId, content, parentId } = req.body;
         const comment = new Comment({
             user: req.user._id,
-            beer: req.body.beerId,
-            content: req.body.content
+            beer: beerId,
+            content,
+            parentId
         });
         const newComment = await comment.save();
 
-        // Add comment to the beer
-        await Beer.findByIdAndUpdate(req.body.beerId, { $push: { comments: newComment._id } });
+        if (parentId) {
+            // If it's a reply, add it to the parent comment's replies
+            await Comment.findByIdAndUpdate(parentId, { $push: { replies: newComment._id } });
+        } else {
+            // If it's a main comment, add it to the beer's comments
+            await Beer.findByIdAndUpdate(beerId, { $push: { comments: newComment._id } });
+        }
 
         res.status(201).json(newComment);
     } catch (err) {
         res.status(400).json({ message: err.message });
     }
 });
+
 
 // UPDATE a comment
 router.patch('/:id', authMiddleware, async (req, res) => {

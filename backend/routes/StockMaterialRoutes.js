@@ -45,8 +45,16 @@ router.post('/', authMiddleware, isAdmin, cloudinaryUploader.single("img"), asyn
         if (req.file) {
             stockMaterialData.img = req.file.path;
         }
+
+        stockMaterialData.quantity = parseInt(stockMaterialData.quantity);
+        stockMaterialData.price = parseFloat(stockMaterialData.price);
+        stockMaterialData.minimumStock = parseInt(stockMaterialData.minimumStock);
+
+        console.log('Processed stock material data:', stockMaterialData);
+
         const stockMaterial = new StockMaterial(stockMaterialData);
         const newStockMaterial = await stockMaterial.save();
+        console.log('Saved stock material:', newStockMaterial);
         res.status(201).json(newStockMaterial);
     } catch (err) {
         res.status(400).json({ message: err.message });

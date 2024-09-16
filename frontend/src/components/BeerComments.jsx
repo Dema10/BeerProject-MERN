@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Button, Form, ListGroup, Badge } from 'react-bootstrap';
+import { Button, Form, Card, Badge } from 'react-bootstrap';
 import { HandThumbsUp, Pencil, Trash, Reply } from 'react-bootstrap-icons';
 import { getComments, addComment, updateComment, deleteComment } from '../services/api';
 
-export default function BeerComments({ beerId, currentUser }) {
+export default function BeerComments({ beerId, currentUser, onCommentAdded }) {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [editingCommentId, setEditingCommentId] = useState(null);
@@ -13,6 +13,7 @@ export default function BeerComments({ beerId, currentUser }) {
   const fetchComments = useCallback(async () => {
     try {
       const commentsData = await getComments(beerId);
+      console.log('Commenti ricevuti:', commentsData);
       setComments(commentsData);
       const initialLikes = commentsData.reduce((acc, comment) => {
         acc[comment._id] = 0;
@@ -21,6 +22,8 @@ export default function BeerComments({ beerId, currentUser }) {
       setUserLikes(initialLikes);
     } catch (error) {
       console.error('Errore nel caricamento dei commenti:', error);
+      setComments([]);
+      setUserLikes({});
     }
   }, [beerId]);
 
@@ -28,16 +31,28 @@ export default function BeerComments({ beerId, currentUser }) {
     fetchComments();
   }, [fetchComments]);
 
-  const handleSubmitComment = async (e) => {
+  const handleSubmitComment = async (e, parentId = null) => {
     e.preventDefault();
     if (!currentUser) {
       alert("Effettua il login per commentare");
       return;
     }
+    const content = parentId ? e.target.content.value : newComment;
     try {
-      const response = await addComment({ beerId, content: newComment });
-      setComments(prevComments => [...prevComments, response]);
-      setNewComment('');
+      const commentData = { beerId, content, parentId };
+      const response = await addComment(commentData);
+      if (parentId) {
+        setComments(prevComments => prevComments.map(comment => 
+          comment._id === parentId
+            ? { ...comment, replies: [...(comment.replies || []), response] }
+            : comment
+        ));
+        setReplyingToId(null);
+      } else {
+        setComments(prevComments => [response, ...prevComments]);
+        setNewComment('');
+      }
+      if (onCommentAdded) onCommentAdded();
     } catch (error) {
       console.error('Errore nella creazione del commento:', error);
     }
@@ -45,9 +60,15 @@ export default function BeerComments({ beerId, currentUser }) {
 
   const handleEditComment = async (commentId, newContent) => {
     try {
-      await updateComment(commentId, { content: newContent });
+      const updatedComment = await updateComment(commentId, { content: newContent });
       setComments(prevComments => prevComments.map(comment => 
-        comment._id === commentId ? { ...comment, content: newContent } : comment
+        comment._id === commentId ? { ...comment, content: updatedComment.content } : 
+        comment.replies ? {
+          ...comment,
+          replies: comment.replies.map(reply =>
+            reply._id === commentId ? { ...reply, content: updatedComment.content } : reply
+          )
+        } : comment
       ));
       setEditingCommentId(null);
     } catch (error) {
@@ -58,23 +79,15 @@ export default function BeerComments({ beerId, currentUser }) {
   const handleDeleteComment = async (commentId) => {
     try {
       await deleteComment(commentId);
-      setComments(prevComments => prevComments.filter(comment => comment._id !== commentId));
+      setComments(prevComments => prevComments.filter(comment => {
+        if (comment._id === commentId) return false;
+        if (comment.replies) {
+          comment.replies = comment.replies.filter(reply => reply._id !== commentId);
+        }
+        return true;
+      }));
     } catch (error) {
       console.error('Errore nell\'eliminazione del commento:', error);
-    }
-  };
-
-  const handleReply = async (parentId, content) => {
-    if (!currentUser) {
-      alert("Effettua il login per rispondere");
-      return;
-    }
-    try {
-      const response = await addComment({ beerId, content, parentId });
-      setComments(prevComments => [...prevComments, response]);
-      setReplyingToId(null);
-    } catch (error) {
-      console.error('Errore nella risposta al commento:', error);
     }
   };
 
@@ -93,63 +106,80 @@ export default function BeerComments({ beerId, currentUser }) {
     return currentUser && currentUser._id === userId;
   }, [currentUser]);
 
-  const CommentAuthor = ({ user }) => (
-    <small>
-      By: {user.name} {user.role === 'admin' && <Badge bg="warning">Admin</Badge>}
-    </small>
+  const CommentAuthor = ({ user }) => {
+    console.log('User data:', user);
+    if (!user) return null;
+    return (
+      <small className="d-flex align-items-center">
+        By: {user.name} 
+        {user.role === 'admin' && (
+          <Badge bg="warning" text="dark" className="ms-2">
+            Admin
+          </Badge>
+        )}
+      </small>
+    );
+  };
+
+  const renderComment = (comment, isReply = false) => (
+    <Card key={comment._id} className={`mb-3 ${isReply ? 'ms-4' : ''}`}>
+      <Card.Body className={isReply ? 'py-2 bg-light' : ''}>
+        <div className="d-flex justify-content-between align-items-start">
+          <div>
+            <p className="mb-1">{comment.content}</p>
+            <CommentAuthor user={comment.user} />
+          </div>
+          <div>
+            <Button variant="link" className="p-0 me-2" onClick={() => handleLikeComment(comment._id)}>
+              <HandThumbsUp /> {(comment.likes ? comment.likes.length : 0) + (userLikes[comment._id] || 0)}
+            </Button>
+            {isCurrentUserAuthor(comment.user?._id) && (
+              <Button variant="link" className="p-0 me-2" onClick={() => setEditingCommentId(comment._id)}>
+                <Pencil />
+              </Button>
+            )}
+            {(isCurrentUserAuthor(comment.user?._id) || currentUser?.role === 'admin') && (
+              <Button variant="link" className="p-0 me-2" onClick={() => handleDeleteComment(comment._id)}>
+                <Trash />
+              </Button>
+            )}
+            {!isReply && (
+              <Button variant="link" className="p-0" onClick={() => setReplyingToId(comment._id)}>
+                <Reply /> Rispondi
+              </Button>
+            )}
+          </div>
+        </div>
+        {editingCommentId === comment._id && (
+          <Form onSubmit={(e) => {
+            e.preventDefault();
+            handleEditComment(comment._id, e.target.content.value);
+          }} className="mt-2">
+            <Form.Control name="content" defaultValue={comment.content} />
+            <Button type="submit" variant="primary" size="sm" className="mt-2 me-2">Salva</Button>
+            <Button variant="secondary" size="sm" onClick={() => setEditingCommentId(null)} className="mt-2">Annulla</Button>
+          </Form>
+        )}
+        {replyingToId === comment._id && (
+          <Form onSubmit={(e) => handleSubmitComment(e, comment._id)} className="mt-2">
+            <Form.Control name="content" placeholder="La tua risposta" />
+            <Button type="submit" variant="primary" size="sm" className="mt-2 me-2">Invia risposta</Button>
+            <Button variant="secondary" size="sm" onClick={() => setReplyingToId(null)} className="mt-2">Annulla</Button>
+          </Form>
+        )}
+      </Card.Body>
+      {comment.replies && comment.replies.length > 0 && (
+        <Card.Footer className="p-0">
+          {comment.replies.map(reply => renderComment(reply, true))}
+        </Card.Footer>
+      )}
+    </Card>
   );
 
   return (
     <div>
       <h5>Commenti</h5>
-      <ListGroup>
-        {comments.map((comment) => (
-          <ListGroup.Item key={comment._id}>
-            {editingCommentId === comment._id ? (
-              <Form onSubmit={(e) => {
-                e.preventDefault();
-                handleEditComment(comment._id, e.target.content.value);
-              }}>
-                <Form.Control name="content" defaultValue={comment.content} />
-                <Button type="submit">Salva</Button>
-                <Button variant="secondary" onClick={() => setEditingCommentId(null)}>Annulla</Button>
-              </Form>
-            ) : (
-              <>
-                <p>{comment.content}</p>
-                <CommentAuthor user={comment.user} />
-                <Button variant="link" onClick={() => handleLikeComment(comment._id)}>
-                  <HandThumbsUp /> {(comment.likes ? comment.likes.length : 0) + (userLikes[comment._id] || 0)}
-                </Button>
-                {isCurrentUserAuthor(comment.user._id) && (
-                  <>
-                    <Button variant="link" onClick={() => setEditingCommentId(comment._id)}>
-                      <Pencil />
-                    </Button>
-                    <Button variant="link" onClick={() => handleDeleteComment(comment._id)}>
-                      <Trash />
-                    </Button>
-                  </>
-                )}
-                <Button variant="link" onClick={() => setReplyingToId(comment._id)}>
-                  <Reply /> Rispondi
-                </Button>
-                {replyingToId === comment._id && (
-                  <Form onSubmit={(e) => {
-                    e.preventDefault();
-                    handleReply(comment._id, e.target.content.value);
-                  }}>
-                    <Form.Control name="content" placeholder="La tua risposta" />
-                    <Button type="submit">Invia risposta</Button>
-                    <Button variant="secondary" onClick={() => setReplyingToId(null)}>Annulla</Button>
-                  </Form>
-                )}
-              </>
-            )}
-          </ListGroup.Item>
-        ))}
-      </ListGroup>
-      <Form onSubmit={handleSubmitComment}>
+      <Form onSubmit={(e) => handleSubmitComment(e)} className="mb-3">
         <Form.Group>
           <Form.Control
             as="textarea"
@@ -159,10 +189,17 @@ export default function BeerComments({ beerId, currentUser }) {
             disabled={!currentUser}
           />
         </Form.Group>
-        <Button type="submit" disabled={!currentUser}>
+        <Button type="submit" className='mt-2' disabled={!currentUser}>
           {currentUser ? "Invia commento" : "Effettua il login per commentare"}
         </Button>
       </Form>
+      {comments.length > 0 ? (
+        <div>
+          {comments.map(comment => renderComment(comment))}
+        </div>
+      ) : (
+        <p>Nessun commento disponibile.</p>
+      )}
     </div>
   );
 }

@@ -5,12 +5,15 @@ const beerSchema = new mongoose.Schema({
     style: { type: String, required: true },
     abv: { type: Number, required: true },
     description: { type: String, required: true },
-    image: { type: String },
+    img: { type: String },
     likes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     comments: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Comment' }],
     inProduction: { type: Boolean, default: true },
     isNew: { type: Boolean, default: true },
-    createdAt: { type: Date, default: Date.now }
+    createdAt: { type: Date, default: Date.now },
+    quantity: { type: Number, required: true, default: 0 },
+    price: { type: Number, required: true },
+    minimumStock: { type: Number, required: true },
 }, {
     timestamps: true,
     collection: 'Beers'

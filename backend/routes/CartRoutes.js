@@ -27,43 +27,47 @@ router.get('/', authMiddleware, isAuthenticated, async (req, res) => {
 router.post('/add', authMiddleware, isAuthenticated, async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
-
+  
     try {
-        const { beerId, quantity } = req.body;
-        const beer = await Beer.findById(beerId).session(session);
-        if (!beer) {
-            throw new Error('Birra non trovata');
-        }
-
-        const stock = await StockMaterial.findOne({ name: beer.name, type: 'bottiglia' }).session(session);
-        if (!stock || stock.quantity < quantity) {
-            throw new Error('Quantità richiesta non disponibile in magazzino');
-        }
-
-        let cart = await Cart.findOne({ user: req.user._id }).session(session);
-        if (!cart) {
-            cart = new Cart({ user: req.user._id, items: [], totalPrice: 0 });
-        }
-
-        const existingItem = cart.items.find(item => item.beer.toString() === beerId);
-        if (existingItem) {
-            existingItem.quantity += quantity;
-        } else {
-            cart.items.push({ beer: beerId, quantity });
-        }
-
-        cart.totalPrice += stock.price * quantity;
-        await cart.save({ session });
-
-        await session.commitTransaction();
-        res.json(cart);
+      const { beerId, quantity } = req.body;
+      const beer = await Beer.findById(beerId).session(session);
+      if (!beer) {
+        throw new Error('Birra non trovata');
+      }
+  
+      if (beer.quantity < quantity) {
+        throw new Error(`Quantità richiesta non disponibile. Disponibili: ${beer.quantity}`);
+      }
+  
+      let cart = await Cart.findOne({ user: req.user._id }).session(session);
+      if (!cart) {
+        cart = new Cart({ user: req.user._id, items: [], totalPrice: 0 });
+      }
+  
+      const existingItem = cart.items.find(item => item.beer.toString() === beerId);
+      if (existingItem) {
+        existingItem.quantity += quantity;
+      } else {
+        cart.items.push({ beer: beerId, quantity });
+      }
+  
+      cart.totalPrice += beer.price * quantity;
+      await cart.save({ session });
+  
+      // Aggiorna la quantità della birra
+      beer.quantity -= quantity;
+      await beer.save({ session });
+  
+      await session.commitTransaction();
+      res.json(cart);
     } catch (err) {
-        await session.abortTransaction();
-        res.status(400).json({ message: err.message });
+      console.error('Errore durante l\'aggiunta al carrello:', err);
+      await session.abortTransaction();
+      res.status(400).json({ message: err.message });
     } finally {
-        session.endSession();
+      session.endSession();
     }
-});
+  });
 
 // PATCH aggiorna quantità articolo nel carrello
 router.patch('/update/:itemId', authMiddleware, isAuthenticated, async (req, res) => {

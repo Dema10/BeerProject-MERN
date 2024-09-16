@@ -43,14 +43,23 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST a new beer (admin only)
-router.post('/', authMiddleware, isAdmin, cloudinaryUploader.single("image"), async (req, res) => {
+router.post('/', authMiddleware, isAdmin, cloudinaryUploader.single("img"), async (req, res) => {
     try {
         const beerData = req.body;
         if (req.file) {
-            beerData.image = req.file.path;
+            beerData.img = req.file.path;
         }
+
+        // Campi relativi al magazzino
+        beerData.quantity = parseInt(beerData.quantity);
+        beerData.price = parseFloat(beerData.price);
+        beerData.minimumStock = parseInt(beerData.minimumStock);
+
+        console.log('Processed beer data:', beerData);
+
         const beer = new Beer(beerData);
         const newBeer = await beer.save();
+        console.log('Saved beer:', newBeer);
         res.status(201).json(newBeer);
     } catch (err) {
         res.status(400).json({ message: err.message });
@@ -58,7 +67,7 @@ router.post('/', authMiddleware, isAdmin, cloudinaryUploader.single("image"), as
 });
 
 // UPDATE a beer (admin only)
-router.patch('/:id', authMiddleware, isAdmin, cloudinaryUploader.single("image"), async (req, res) => {
+router.patch('/:id', authMiddleware, isAdmin, cloudinaryUploader.single("img"), async (req, res) => {
     try {
         const beerData = req.body;
         const oldBeer = await Beer.findById(req.params.id);
@@ -68,15 +77,15 @@ router.patch('/:id', authMiddleware, isAdmin, cloudinaryUploader.single("image")
         }
 
         if (req.file) {
-            if (oldBeer.image) {
-                const publicId = `Beer-image/${oldBeer.image.split('/').pop().split('.')[0]}`;
+            if (oldBeer.img) {
+                const publicId = `Beer-image/${oldBeer.img.split('/').pop().split('.')[0]}`;
                 try {
                     await cloudinary.uploader.destroy(publicId);
                 } catch (cloudinaryError) {
                     console.error("Errore nell'eliminazione della vecchia immagine:", cloudinaryError);
                 }
             }
-            beerData.image = req.file.path;
+            beerData.img = req.file.path;
         }
 
         const updatedBeer = await Beer.findByIdAndUpdate(
@@ -92,15 +101,15 @@ router.patch('/:id', authMiddleware, isAdmin, cloudinaryUploader.single("image")
 });
 
 // DELETE a beer (admin only)
-router.delete('/:id', cloudinaryUploader.single("image"), authMiddleware, isAdmin, async (req, res) => {
+router.delete('/:id', cloudinaryUploader.single("img"), authMiddleware, isAdmin, async (req, res) => {
     try {
         const beer = await Beer.findById(req.params.id);
         if (!beer) {
             return res.status(404).json({ message: "Birra non trovata" });
         }
 
-        if (beer.image) {
-            const publicId = `Beer-image/${beer.image.split('/').pop().split('.')[0]}`;
+        if (beer.img) {
+            const publicId = `Beer-image/${beer.img.split('/').pop().split('.')[0]}`;
             console.log("Extracted publicId:", publicId);
             try {
                 const result = await cloudinary.uploader.destroy(publicId);
@@ -111,7 +120,7 @@ router.delete('/:id', cloudinaryUploader.single("image"), authMiddleware, isAdmi
         }
 
         await Beer.findByIdAndDelete(req.params.id);
-        
+
         res.json({ message: "Birra e immagine eliminate" });
     } catch (err) {
         res.status(500).json({ message: err.message });

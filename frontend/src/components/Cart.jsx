@@ -4,8 +4,7 @@ import { Cart as CartIcon, Trash, Plus, Dash } from 'react-bootstrap-icons';
 import { getCart, updateCartItem, removeFromCart, checkout } from '../services/api';
 import '../Spinner.css';
 
-export default function Cart ()  {
-
+export default function Cart() {
   const [cart, setCart] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -26,10 +25,23 @@ export default function Cart ()  {
 
   useEffect(() => {
     fetchCart();
+  
+    const handleCartUpdate = (event) => {
+      console.log('Cart updated event received', event.detail);
+      fetchCart();
+    };
+  
+    window.addEventListener('cartUpdated', handleCartUpdate);
+  
+    return () => {
+      window.removeEventListener('cartUpdated', handleCartUpdate);
+    };
   }, [fetchCart]);
 
   const updateLocalCart = (updatedItem, remove = false) => {
     setCart(prevCart => {
+      if (!prevCart) return prevCart;
+      
       const updatedItems = remove
         ? prevCart.items.filter(item => item._id !== updatedItem._id)
         : prevCart.items.map(item => 
@@ -56,7 +68,6 @@ export default function Cart ()  {
     } catch (error) {
       console.error('Errore nell\'aggiornamento della quantità:', error);
       setError('Errore nell\'aggiornamento della quantità');
-      // Ricarica il carrello in caso di errore per assicurarsi che i dati siano sincronizzati
       fetchCart();
     }
   };
@@ -74,8 +85,7 @@ export default function Cart ()  {
 
   const handleClearCart = async () => {
     try {
-      // Assumiamo che esista un endpoint per svuotare il carrello
-      await checkout(); // Utilizziamo checkout come metodo per svuotare il carrello
+      await checkout();
       setCart({ items: [], totalPrice: 0 });
     } catch (error) {
       console.error('Errore nello svuotamento del carrello:', error);
@@ -153,4 +163,4 @@ export default function Cart ()  {
       </Dropdown.Menu>
     </Dropdown>
   );
-};
+}

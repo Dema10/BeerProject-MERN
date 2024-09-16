@@ -4,10 +4,10 @@ const commentSchema = new mongoose.Schema({
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     beer: { type: mongoose.Schema.Types.ObjectId, ref: 'Beer', required: true },
     content: { type: String, required: true },
+    parentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Comment', default: null },
     replies: [{
-        user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-        content: { type: String, required: true },
-        createdAt: { type: Date, default: Date.now }
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Comment'
     }]
 }, {
     timestamps: true,
