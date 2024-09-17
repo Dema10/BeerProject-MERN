@@ -13,11 +13,19 @@ export default function Cart() {
     try {
       setLoading(true);
       const cartData = await getCart();
-      setCart(cartData);
+      console.log('Risposta completa da getCart:', cartData);
+      if (cartData && cartData._id) {
+        setCart(cartData);
+        console.log('Carrello recuperato:', cartData);
+      } else {
+        console.error('Dati del carrello non validi:', cartData);
+        setCart(null);
+      }
       setError(null);
     } catch (error) {
       console.error('Errore nel recupero del carrello:', error);
       setError('Errore nel caricamento del carrello');
+      setCart(null);
     } finally {
       setLoading(false);
     }
@@ -27,7 +35,7 @@ export default function Cart() {
     fetchCart();
   
     const handleCartUpdate = (event) => {
-      console.log('Cart updated event received', event.detail);
+      console.log('Evento di aggiornamento del carrello ricevuto', event.detail);
       fetchCart();
     };
   
@@ -63,18 +71,23 @@ export default function Cart() {
 
   const handleQuantityChange = async (itemId, newQuantity) => {
     try {
-      const updatedItem = await updateCartItem(itemId, { quantity: newQuantity });
-      updateLocalCart(updatedItem);
+      setLoading(true);
+      const updatedCart = await updateCartItem(itemId, { quantity: newQuantity });
+      console.log('Carrello aggiornato:', updatedCart);
+      setCart(updatedCart); // Aggiorna direttamente lo stato con il carrello aggiornato
+      setError(null);
     } catch (error) {
       console.error('Errore nell\'aggiornamento della quantità:', error);
       setError('Errore nell\'aggiornamento della quantità');
-      fetchCart();
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleRemoveItem = async (itemId) => {
     try {
       await removeFromCart(itemId);
+      console.log('Articolo rimosso dal carrello:', itemId); // Aggiunto per debug
       updateLocalCart({ _id: itemId }, true);
     } catch (error) {
       console.error('Errore nella rimozione del prodotto:', error);
@@ -86,6 +99,7 @@ export default function Cart() {
   const handleClearCart = async () => {
     try {
       await checkout();
+      console.log('Carrello svuotato'); // Aggiunto per debug
       setCart({ items: [], totalPrice: 0 });
     } catch (error) {
       console.error('Errore nello svuotamento del carrello:', error);
@@ -97,6 +111,7 @@ export default function Cart() {
   const handleCheckout = async () => {
     try {
       await checkout();
+      console.log('Checkout completato'); // Aggiunto per debug
       setCart({ items: [], totalPrice: 0 });
       alert('Ordine confermato con successo!');
     } catch (error) {
@@ -114,7 +129,9 @@ export default function Cart() {
         ) : (
           <>
             <CartIcon className="fs-5" />
-            <Badge bg="danger" pill>{cart && cart.items ? cart.items.length : 0}</Badge>
+            <Badge bg="danger" pill>
+              {cart && cart.items ? cart.items.length : 0}
+            </Badge>
           </>
         )}
       </Dropdown.Toggle>
@@ -122,45 +139,90 @@ export default function Cart() {
       <Dropdown.Menu style={{minWidth: '300px', maxHeight: '400px', overflowY: 'auto'}}>
         {loading ? (
           <Dropdown.Item>Caricamento...</Dropdown.Item>
-        ) : error ? (
-          <Dropdown.Item className="text-danger">{error}</Dropdown.Item>
-        ) : cart && cart.items && cart.items.length > 0 ? (
-          <>
-            {cart.items.map((item) => (
-              <Dropdown.Item key={item._id} className="d-flex justify-content-between align-items-center">
-                <span>{item.beer.name}</span>
-                <div>
-                  <Button variant="outline-secondary" size="sm" onClick={() => handleQuantityChange(item._id, item.quantity - 1)} disabled={item.quantity <= 1}>
-                    <Dash />
-                  </Button>
-                  <Form.Control
-                    type="number"
-                    value={item.quantity}
-                    onChange={(e) => handleQuantityChange(item._id, parseInt(e.target.value))}
-                    style={{width: '50px', display: 'inline-block', marginLeft: '5px', marginRight: '5px'}}
-                  />
-                  <Button variant="outline-secondary" size="sm" onClick={() => handleQuantityChange(item._id, item.quantity + 1)}>
-                    <Plus />
-                  </Button>
-                  <Button variant="outline-danger" size="sm" onClick={() => handleRemoveItem(item._id)} style={{marginLeft: '5px'}}>
-                    <Trash />
-                  </Button>
-                </div>
-              </Dropdown.Item>
-            ))}
-            <Dropdown.Divider />
-            <Dropdown.Item>
-              <strong>Totale: €{cart.totalPrice.toFixed(2)}</strong>
+       ) : error ? (
+        <Dropdown.Item className="text-danger">{error}</Dropdown.Item>
+       ) : cart && cart.items && cart.items.length > 0 ? (
+        <>
+          {cart.items.map((item) => (
+            <Dropdown.Item key={item._id} className="d-flex justify-content-between align-items-center">
+              <span>{item.beer.name}</span>
+              <div>
+                <Button 
+                  variant="outline-secondary" 
+                  size="sm" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleQuantityChange(item._id, item.quantity - 1);
+                  }} 
+                  disabled={item.quantity <= 1}
+                >
+                  <Dash />
+                </Button>
+                <Form.Control
+                  type="number"
+                  value={item.quantity}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    handleQuantityChange(item._id, parseInt(e.target.value));
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{width: '50px', display: 'inline-block', marginLeft: '5px', marginRight: '5px'}}
+                />
+                <Button 
+                  variant="outline-secondary" 
+                  size="sm" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleQuantityChange(item._id, item.quantity + 1);
+                  }}
+                >
+                  <Plus />
+                </Button>
+                <Button 
+                  variant="outline-danger" 
+                  size="sm" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRemoveItem(item._id);
+                  }} 
+                  style={{marginLeft: '5px'}}
+                >
+                  <Trash />
+                </Button>
+              </div>
             </Dropdown.Item>
-            <Dropdown.Item>
-              <Button variant="success" onClick={handleCheckout} className="w-100 mb-2">Conferma Ordine</Button>
-              <Button variant="danger" onClick={handleClearCart} className="w-100">Svuota Carrello</Button>
-            </Dropdown.Item>
-          </>
-        ) : (
-          <Dropdown.Item>Il carrello è vuoto</Dropdown.Item>
-        )}
-      </Dropdown.Menu>
+          ))}
+          <Dropdown.Divider />
+          <Dropdown.Item>
+            <strong>Totale: €{cart.totalPrice.toFixed(2)}</strong>
+          </Dropdown.Item>
+          <Dropdown.Item>
+            <Button 
+              variant="success" 
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCheckout();
+              }} 
+              className="w-100 mb-2"
+            >
+              Conferma Ordine
+            </Button>
+            <Button 
+              variant="danger" 
+              onClick={(e) => {
+                e.stopPropagation();
+                handleClearCart();
+              }} 
+              className="w-100"
+            >
+              Svuota Carrello
+            </Button>
+          </Dropdown.Item>
+        </>
+      ) : (
+        <Dropdown.Item>Il carrello è vuoto</Dropdown.Item>
+      )}
+    </Dropdown.Menu>
     </Dropdown>
   );
 }

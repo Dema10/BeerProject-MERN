@@ -17,8 +17,10 @@ router.get('/', authMiddleware, isAuthenticated, async (req, res) => {
             cart = new Cart({ user: req.user._id, items: [], totalPrice: 0 });
             await cart.save();
         }
+        console.log('Carrello inviato al client:', JSON.stringify(cart, null, 2));
         res.json(cart);
     } catch (err) {
+        console.error('Errore nel recupero del carrello:', err);
         res.status(500).json({ message: err.message });
     }
 });
@@ -29,45 +31,46 @@ router.post('/add', authMiddleware, isAuthenticated, async (req, res) => {
     session.startTransaction();
   
     try {
-      const { beerId, quantity } = req.body;
-      const beer = await Beer.findById(beerId).session(session);
-      if (!beer) {
-        throw new Error('Birra non trovata');
-      }
+        const { beerId, quantity } = req.body;
+        const beer = await Beer.findById(beerId).session(session);
+        if (!beer) {
+            throw new Error('Birra non trovata');
+        }
   
-      if (beer.quantity < quantity) {
-        throw new Error(`Quantità richiesta non disponibile. Disponibili: ${beer.quantity}`);
-      }
+        if (beer.quantity < quantity) {
+            throw new Error(`Quantità richiesta non disponibile. Disponibili: ${beer.quantity}`);
+        }
   
-      let cart = await Cart.findOne({ user: req.user._id }).session(session);
-      if (!cart) {
-        cart = new Cart({ user: req.user._id, items: [], totalPrice: 0 });
-      }
+        let cart = await Cart.findOne({ user: req.user._id }).session(session);
+        if (!cart) {
+            cart = new Cart({ user: req.user._id, items: [], totalPrice: 0 });
+        }
   
-      const existingItem = cart.items.find(item => item.beer.toString() === beerId);
-      if (existingItem) {
-        existingItem.quantity += quantity;
-      } else {
-        cart.items.push({ beer: beerId, quantity });
-      }
+        const existingItem = cart.items.find(item => item.beer.toString() === beerId);
+        if (existingItem) {
+            existingItem.quantity += quantity;
+        } else {
+            cart.items.push({ beer: beerId, quantity });
+        }
   
-      cart.totalPrice += beer.price * quantity;
-      await cart.save({ session });
+        cart.totalPrice += beer.price * quantity;
+        await cart.save({ session });
   
-      // Aggiorna la quantità della birra
-      beer.quantity -= quantity;
-      await beer.save({ session });
+        // Aggiorna la quantità della birra
+        beer.quantity -= quantity;
+        await beer.save({ session });
   
-      await session.commitTransaction();
-      res.json(cart);
+        await session.commitTransaction();
+        console.log('Articolo aggiunto al carrello:', cart); // Aggiunto per debug
+        res.json(cart);
     } catch (err) {
-      console.error('Errore durante l\'aggiunta al carrello:', err);
-      await session.abortTransaction();
-      res.status(400).json({ message: err.message });
+        console.error('Errore durante l\'aggiunta al carrello:', err);
+        await session.abortTransaction();
+        res.status(400).json({ message: err.message });
     } finally {
-      session.endSession();
+        session.endSession();
     }
-  });
+});
 
 // PATCH aggiorna quantità articolo nel carrello
 router.patch('/update/:itemId', authMiddleware, isAuthenticated, async (req, res) => {
@@ -87,19 +90,21 @@ router.patch('/update/:itemId', authMiddleware, isAuthenticated, async (req, res
         }
 
         const beer = await Beer.findById(item.beer).session(session);
-        const stock = await StockMaterial.findOne({ name: beer.name, type: 'bottiglia' }).session(session);
-        if (!stock || stock.quantity < quantity) {
-            throw new Error('Quantità richiesta non disponibile in magazzino');
+        if (!beer || beer.quantity < quantity) {
+            throw new Error('Quantità richiesta non disponibile');
         }
 
-        const priceDifference = stock.price * (quantity - item.quantity);
+        const priceDifference = beer.price * (quantity - item.quantity);
         cart.totalPrice += priceDifference;
         item.quantity = quantity;
 
         await cart.save({ session });
 
         await session.commitTransaction();
-        res.json(cart);
+        
+        // Popoliamo il carrello con i dettagli delle birre prima di inviarlo
+        const populatedCart = await Cart.findById(cart._id).populate('items.beer');
+        res.json(populatedCart);
     } catch (err) {
         await session.abortTransaction();
         res.status(400).json({ message: err.message });
@@ -125,8 +130,7 @@ router.delete('/remove/:itemId', authMiddleware, isAuthenticated, async (req, re
         }
 
         const beer = await Beer.findById(item.beer).session(session);
-        const stock = await StockMaterial.findOne({ name: beer.name, type: 'bottiglia' }).session(session);
-        cart.totalPrice -= stock.price * item.quantity;
+        cart.totalPrice -= beer.price * item.quantity;
         cart.items.pull(req.params.itemId);
 
         await cart.save({ session });
@@ -155,11 +159,13 @@ router.post('/checkout', authMiddleware, isAuthenticated, async (req, res) => {
         // Verifica disponibilità in magazzino e calcola il prezzo totale
         let totalPrice = 0;
         for (let item of cart.items) {
-            const stock = await StockMaterial.findOne({ name: item.beer.name, type: 'bottiglia' }).session(session);
-            if (!stock || stock.quantity < item.quantity) {
+            const beer = await Beer.findById(item.beer._id).session(session);
+            console.log(`Quantità birra ${beer.name} prima dell'ordine:`, beer.quantity);
+            console.log(`Quantità da sottrarre:`, item.quantity);
+            if (!beer || beer.quantity < item.quantity) {
                 throw new Error(`Quantità insufficiente per ${item.beer.name}`);
             }
-            totalPrice += stock.price * item.quantity;
+            totalPrice += beer.price * item.quantity;
         }
 
         // Crea l'ordine
@@ -168,7 +174,7 @@ router.post('/checkout', authMiddleware, isAuthenticated, async (req, res) => {
             beers: cart.items.map(item => ({
                 beer: item.beer._id,
                 quantity: item.quantity,
-                price: item.beer.price // Assumiamo che il prezzo sia memorizzato nel modello Beer
+                price: item.beer.price
             })),
             totalPrice: totalPrice,
             status: 'pending'
@@ -177,10 +183,10 @@ router.post('/checkout', authMiddleware, isAuthenticated, async (req, res) => {
 
         // Aggiorna il magazzino
         for (let item of cart.items) {
-            await StockMaterial.findOneAndUpdate(
-                { name: item.beer.name, type: 'bottiglia' },
-                { $inc: { quantity: -item.quantity } },
-                { session }
+            await Beer.findByIdAndUpdate(
+            item.beer._id,
+            { $inc: { quantity: -item.quantity } },
+            { session, new: true }
             );
         }
 

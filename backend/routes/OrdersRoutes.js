@@ -1,6 +1,7 @@
 import express from 'express';
 import Order from '../models/Orders.js';
 import User from '../models/User.js';
+import Beer from '../models/Beer.js';
 import { authMiddleware, isAdmin, isAuthenticated } from '../middlewares/authMiddleware.js';
 
 const router = express.Router();
@@ -13,7 +14,7 @@ const validateOrderAndCalculateTotal = async (beers) => {
         if (!beer) throw new Error(`Birra con id ${item.beer} non trovata`);
 
         // Trova lo stock della birra (assumiamo che il nome dello stock corrisponda al nome della birra)
-        const stock = await StockMaterial.findOne({ name: beer.name, type: 'bottiglia' });
+        const stock = await StockMaterial.findOne({ name: beer.name });
         if (!stock) throw new Error(`Stock non trovato per la birra ${beer.name}`);
 
         if (stock.quantity < item.quantity) {
@@ -88,7 +89,7 @@ router.post('/', authMiddleware, isAuthenticated, async (req, res) => {
             user: req.user._id,
             beers: await Promise.all(beers.map(async item => {
                 const beer = await Beer.findById(item.beer);
-                const stock = await StockMaterial.findOne({ name: beer.name, type: 'bottiglia' });
+                const stock = await StockMaterial.findOne({ name: beer.name });
                 return {
                     beer: item.beer,
                     quantity: item.quantity,
@@ -104,7 +105,7 @@ router.post('/', authMiddleware, isAuthenticated, async (req, res) => {
         for (let item of beers) {
             const beer = await Beer.findById(item.beer);
             await StockMaterial.findOneAndUpdate(
-                { name: beer.name, type: 'bottiglia' },
+                { name: beer.name },
                 { $inc: { quantity: -item.quantity } },
                 { session }
             );

@@ -64,7 +64,7 @@ export default function BeerList({ beers, currentUser, setBeers }) {
         <Col key={beer._id} xs={12} md={6} lg={4} className="mb-4">
           <Card className="h-100">
             <div style={{ position: 'relative' }}>
-              <Card.Img variant="top" src={beer.img} style={{height: '350px', objectFit: 'cover'}} />
+              <Card.Img variant="top" src={beer.img} style={{height: '400px', objectFit: 'cover'}} />
               {beer.isNew && (
                 <Badge 
                   bg="success" 

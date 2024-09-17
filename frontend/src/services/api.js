@@ -16,6 +16,17 @@ api.interceptors.request.use(
     }
 );
 
+api.interceptors.response.use(
+    (response) => {
+      console.log('Risposta API:', response.config.url, response.data);
+      return response;
+    },
+    (error) => {
+      console.error('Errore API:', error.config.url, error.response?.data);
+      return Promise.reject(error);
+    }
+  );
+
 // Auth
 export const loginUser = async (credentials) => {
     try {
@@ -136,9 +147,9 @@ export const updateStockMaterial = (id, materialData) => api.patch(`/stock-mater
 export const deleteStockMaterial = (id) => api.delete(`/stock-materials/${id}`);
 
 // Cart
-export const getCart = () => api.get('/cart');
+export const getCart = () => api.get('/cart').then(res => res.data);
 export const addToCart = (data) => api.post('/cart/add', data);
-export const updateCartItem = (itemId, data) => api.patch(`/cart/update/${itemId}`, data);
+export const updateCartItem = (itemId, data) => api.patch(`/cart/update/${itemId}`, data).then(res => res.data);
 export const removeFromCart = (itemId) => api.delete(`/cart/remove/${itemId}`);
 export const checkout = () => api.post('/cart/checkout');
 
