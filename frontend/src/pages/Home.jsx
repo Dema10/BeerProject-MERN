@@ -23,9 +23,7 @@ export default function Home() {
         getCarouselImages()
       ]);
       
-      // Estraiamo l'array di birre dalla risposta
       setBeers(beersResponse.data.beers || []);
-      // Estraiamo l'array di immagini dalla risposta
       setCarouselImages(carouselImagesData.data || []);
 
       if (localStorage.getItem('token')) {
@@ -42,12 +40,26 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-    }, []);
+  }, []);
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
 
+    const handleUpdate = async () => {
+      console.log('Evento di aggiornamento ricevuto');
+      await fetchData();
+    };
+
+    window.addEventListener('orderConfirmed', handleUpdate);
+    window.addEventListener('orderCancelled', handleUpdate);
+    window.addEventListener('cartUpdated', handleUpdate);
+
+    return () => {
+      window.removeEventListener('orderConfirmed', handleUpdate);
+      window.removeEventListener('orderCancelled', handleUpdate);
+      window.removeEventListener('cartUpdated', handleUpdate);
+    };
+  }, [fetchData]);
 
   const handleAddImage = async (imageData) => {
     try {
@@ -100,8 +112,8 @@ export default function Home() {
         </div>
       )}
       <Row className="my-5">
-        <Col>
-          <h2 className="text-center" style={{ color: "#00ff84" }}>Le Nostre Birre</h2>
+        <h2 className="text-center" style={{ color: "#00ff84" }}>Le Nostre Birre</h2>
+        <Col lg={10} md={12}>
           <BeerList beers={beers} currentUser={currentUser} setBeers={setBeers} />
         </Col>
       </Row>

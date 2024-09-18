@@ -56,12 +56,10 @@ router.post('/add', authMiddleware, isAuthenticated, async (req, res) => {
         cart.totalPrice += beer.price * quantity;
         await cart.save({ session });
   
-        // Aggiorna la quantità della birra
-        beer.quantity -= quantity;
-        await beer.save({ session });
+        // Non modifichiamo più la quantità della birra qui
   
         await session.commitTransaction();
-        console.log('Articolo aggiunto al carrello:', cart); // Aggiunto per debug
+        console.log('Articolo aggiunto al carrello:', cart);
         res.json(cart);
     } catch (err) {
         console.error('Errore durante l\'aggiunta al carrello:', err);
@@ -102,7 +100,6 @@ router.patch('/update/:itemId', authMiddleware, isAuthenticated, async (req, res
 
         await session.commitTransaction();
         
-        // Popoliamo il carrello con i dettagli delle birre prima di inviarlo
         const populatedCart = await Cart.findById(cart._id).populate('items.beer');
         res.json(populatedCart);
     } catch (err) {
@@ -156,7 +153,6 @@ router.post('/checkout', authMiddleware, isAuthenticated, async (req, res) => {
             throw new Error('Il carrello è vuoto');
         }
 
-        // Verifica disponibilità in magazzino e calcola il prezzo totale
         let totalPrice = 0;
         for (let item of cart.items) {
             const beer = await Beer.findById(item.beer._id).session(session);
@@ -166,9 +162,12 @@ router.post('/checkout', authMiddleware, isAuthenticated, async (req, res) => {
                 throw new Error(`Quantità insufficiente per ${item.beer.name}`);
             }
             totalPrice += beer.price * item.quantity;
+
+            // Aggiorna la quantità della birra
+            beer.quantity -= item.quantity;
+            await beer.save({ session });
         }
 
-        // Crea l'ordine
         const order = new Order({
             user: req.user._id,
             beers: cart.items.map(item => ({
@@ -181,19 +180,8 @@ router.post('/checkout', authMiddleware, isAuthenticated, async (req, res) => {
         });
         await order.save({ session });
 
-        // Aggiorna il magazzino
-        for (let item of cart.items) {
-            await Beer.findByIdAndUpdate(
-            item.beer._id,
-            { $inc: { quantity: -item.quantity } },
-            { session, new: true }
-            );
-        }
-
-        // Aggiorna gli ordini dell'utente
         await User.findByIdAndUpdate(req.user._id, { $push: { orders: order._id } }, { session });
 
-        // Svuota il carrello
         cart.items = [];
         cart.totalPrice = 0;
         await cart.save({ session });

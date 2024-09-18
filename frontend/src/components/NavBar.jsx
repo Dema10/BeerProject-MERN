@@ -90,13 +90,13 @@ export default function NavBar() {
                 </div>
                 <NavDropdown.Divider style={{borderTopColor:"#00ff84"}}/>
                 <div className="d-flex flex-column">
-                  <Link to="/profile" className="custom-link text-decoration-none ps-2 my-2">
+                  <Nav.Link as={Link} to="/profile" className="custom-link text-decoration-none ps-2 my-2">
                     <Person className="pb-1 fs-5" /> Profile
-                  </Link>
+                  </Nav.Link>
                   {user.role === 'admin' && (
-                    <Link to="/admin/settings" className="custom-link text-decoration-none ps-2 mt-2 mb-2">
+                    <Nav.Link as={Link} to="/admin/settings" className="custom-link text-decoration-none ps-2 mt-2 mb-2">
                       <PersonGear className="pb-1 fs-5" /> Users Settings
-                    </Link>
+                    </Nav.Link>
                   )}
                 </div>
                 <NavDropdown.Divider style={{borderTopColor:"#00ff84"}}/>

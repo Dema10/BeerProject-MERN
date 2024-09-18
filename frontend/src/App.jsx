@@ -10,6 +10,7 @@ import NavBar from './components/NavBar';
 import Footer from './components/Footer';
 import NewProductStock from './pages/NewProductStock';
 import Dashboard from './pages/Dashboard';
+import MyDashboard from './pages/MyDashboard';
 
 function App() {
 
@@ -24,6 +25,7 @@ function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<SignUp />} />
               <Route path="/admin/dashboard" element={<Dashboard />} />
+              <Route path="/dashboard" element={<MyDashboard />} />
               <Route path="/admin/new-product" element={<NewProductStock />} />
               <Route path="/profile" element={<Profile />} />
             </Routes>

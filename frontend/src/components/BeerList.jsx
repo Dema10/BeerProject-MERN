@@ -1,27 +1,38 @@
 import { useState, useEffect } from 'react';
 import { Card, Button, Badge, Row, Col } from 'react-bootstrap';
-import { HandThumbsUp, CartPlus, ChatDots } from 'react-bootstrap-icons';
+import { HandThumbsUp, HandThumbsDown, CartPlus, ChatDots } from 'react-bootstrap-icons';
 import BeerComments from './BeerComments';
-import { likeBeer, addToCart } from '../services/api';
+import { likeBeer, unlikeBeer, addToCart, getBeers } from '../services/api';
 
-export default function BeerList({ beers, currentUser, setBeers }) {
+export default function BeerList({ beers: initialBeers, currentUser, setBeers, isDashboard = false }) {
   const [expandedBeerId, setExpandedBeerId] = useState(null);
   const [commentsKey, setCommentsKey] = useState({});
+  const [localBeers, setLocalBeers] = useState(initialBeers);
 
-  const handleLike = async (beerId) => {
+  useEffect(() => {
+    setLocalBeers(initialBeers);
+  }, [initialBeers]);
+
+  const handleLikeAction = async (beerId) => {
     if (!currentUser) {
-      alert("Effettua il login per mettere mi piace");
+      alert("Effettua il login per gestire i mi piace");
       return;
     }
     try {
-      await likeBeer(beerId);
-      setBeers(prevBeers => prevBeers.map(beer => 
-        beer._id === beerId
-          ? { ...beer, likes: [...beer.likes, currentUser._id] }
-          : beer
-      ));
+      if (isDashboard) {
+        await unlikeBeer(beerId);
+        setLocalBeers(prevBeers => prevBeers.filter(beer => beer._id !== beerId));
+      } else {
+        await likeBeer(beerId);
+        setLocalBeers(prevBeers => prevBeers.map(beer => 
+          beer._id === beerId
+            ? { ...beer, likes: [...beer.likes, currentUser._id] }
+            : beer
+        ));
+      }
+      setBeers(localBeers);
     } catch (error) {
-      console.error('Errore nel mettere like alla birra:', error);
+      console.error('Errore nella gestione del like alla birra:', error);
     }
   };
 
@@ -35,6 +46,15 @@ export default function BeerList({ beers, currentUser, setBeers }) {
       console.log('Prodotto aggiunto al carrello:', response);
       window.dispatchEvent(new CustomEvent('cartUpdated', { detail: response }));
       alert("Prodotto aggiunto al carrello");
+      
+      // Aggiorna le quantità delle birre
+      const updatedBeers = await getBeers();
+      const newLocalBeers = localBeers.map(beer => {
+        const updatedBeer = updatedBeers.data.beers.find(b => b._id === beer._id);
+        return updatedBeer ? { ...beer, quantity: updatedBeer.quantity } : beer;
+      });
+      setLocalBeers(newLocalBeers);
+      setBeers(newLocalBeers);
     } catch (error) {
       console.error('Errore nell\'aggiungere al carrello:', error);
       alert("Errore nell'aggiungere al carrello");
@@ -60,11 +80,11 @@ export default function BeerList({ beers, currentUser, setBeers }) {
 
   return (
     <Row>
-      {beers.map((beer) => (
+      {localBeers.map((beer) => (
         <Col key={beer._id} xs={12} md={6} lg={4} className="mb-4">
           <Card className="h-100">
             <div style={{ position: 'relative' }}>
-              <Card.Img variant="top" src={beer.img} style={{height: '400px', objectFit: 'cover'}} />
+              <Card.Img variant="top" src={beer.img} style={{height: '350px', objectFit: 'cover'}} />
               {beer.isNew && (
                 <Badge 
                   bg="success" 
@@ -83,32 +103,39 @@ export default function BeerList({ beers, currentUser, setBeers }) {
             <Card.Body className="d-flex flex-column">
               <Card.Title>{beer.name}</Card.Title>
               <Card.Text>{beer.description}</Card.Text>
+              <Card.Text>Disponibili: {beer.quantity}</Card.Text>
               <div className="mt-auto">
                 <Button 
-                  variant="outline-primary" 
-                  onClick={() => handleLike(beer._id)}
-                  disabled={!currentUser || (currentUser && beer.likes.includes(currentUser._id))}
+                  variant={isDashboard ? "outline-danger" : "outline-primary"}
+                  onClick={() => handleLikeAction(beer._id)}
+                  disabled={!isDashboard && (!currentUser || (currentUser && beer.likes.includes(currentUser._id)))}
                   className="me-2 mb-2"
                 >
-                  <HandThumbsUp /> {beer.likes.length}
+                  {isDashboard ? <HandThumbsDown /> : <HandThumbsUp />} 
+                  {isDashboard ? "Rimuovi" : beer.likes.length}
                 </Button>
+
+                {!isDashboard && (
+                  <Button 
+                    variant="outline-secondary"
+                    onClick={() => toggleComments(beer._id)}
+                    className="mb-2"
+                  >
+                    <ChatDots /> Commenti
+                  </Button>
+                )}
+
                 <Button 
                   variant="outline-success" 
                   onClick={() => handleAddToCart(beer._id)}
-                  className="me-2 mb-2"
+                  className="ms-2 mb-2"
+                  disabled={beer.quantity === 0}
                 >
                   <CartPlus /> Carrello
                 </Button>
-                <Button 
-                  variant="outline-secondary"
-                  onClick={() => toggleComments(beer._id)}
-                  className="mb-2"
-                >
-                  <ChatDots /> Commenti
-                </Button>
               </div>
             </Card.Body>
-            {expandedBeerId === beer._id && (
+            {!isDashboard && expandedBeerId === beer._id && (
               <Card.Footer>
                 <BeerComments 
                   key={commentsKey[beer._id]}

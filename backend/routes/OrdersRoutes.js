@@ -1,4 +1,5 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import Order from '../models/Orders.js';
 import User from '../models/User.js';
 import Beer from '../models/Beer.js';
@@ -142,18 +143,51 @@ router.patch('/:id/status', authMiddleware, isAdmin, async (req, res) => {
     }
 });
 
-// DELETE an order (admin only)
-router.delete('/:id', authMiddleware, isAdmin, async (req, res) => {
+// DELETE an order (user can delete only pending orders, admin can delete any order)
+router.delete('/:id', authMiddleware, async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
-        const order = await Order.findById(req.params.id);
-        if (!order) return res.status(404).json({ message: 'Ordine non trovato' });
+        const order = await Order.findById(req.params.id).populate('beers.beer').session(session);
+        if (!order) {
+            return res.status(404).json({ message: 'Ordine non trovato' });
+        }
 
-        await User.findByIdAndUpdate(order.user, { $pull: { orders: order._id } });
-        await Order.findByIdAndDelete(req.params.id);
+        // Check if the user is authorized to delete the order
+        if (req.user.role !== 'admin' && order.user.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Non autorizzato a eliminare questo ordine' });
+        }
 
-        res.json({ message: "Ordine eliminato" });
+        // Users can only delete pending orders
+        if (req.user.role !== 'admin' && order.status !== 'pending') {
+            return res.status(400).json({ message: 'Solo gli ordini in attesa possono essere eliminati' });
+        }
+
+        // If the order is pending, restore the beer quantities
+        if (order.status === 'pending') {
+            for (const item of order.beers) {
+                await Beer.findByIdAndUpdate(
+                    item.beer._id,
+                    { $inc: { quantity: item.quantity } },
+                    { session }
+                );
+            }
+        }
+
+        // Remove the order from the user's orders list
+        await User.findByIdAndUpdate(order.user, { $pull: { orders: order._id } }, { session });
+
+        // Delete the order
+        await Order.findByIdAndDelete(req.params.id).session(session);
+
+        await session.commitTransaction();
+        res.json({ message: "Ordine eliminato con successo" });
     } catch (err) {
+        await session.abortTransaction();
         res.status(500).json({ message: err.message });
+    } finally {
+        session.endSession();
     }
 });
 

@@ -114,6 +114,7 @@ export default function Cart() {
       console.log('Checkout completato'); // Aggiunto per debug
       setCart({ items: [], totalPrice: 0 });
       alert('Ordine confermato con successo!');
+      window.dispatchEvent(new CustomEvent('orderConfirmed'));
     } catch (error) {
       console.error('Errore durante il checkout:', error);
       setError('Errore durante il checkout');
@@ -166,7 +167,7 @@ export default function Cart() {
                     handleQuantityChange(item._id, parseInt(e.target.value));
                   }}
                   onClick={(e) => e.stopPropagation()}
-                  style={{width: '50px', display: 'inline-block', marginLeft: '5px', marginRight: '5px'}}
+                  style={{width: '80px', display: 'inline-block', marginLeft: '5px', marginRight: '5px'}}
                 />
                 <Button 
                   variant="outline-secondary" 
@@ -203,7 +204,7 @@ export default function Cart() {
                 e.stopPropagation();
                 handleCheckout();
               }} 
-              className="w-100 mb-2"
+              className="me-2"
             >
               Conferma Ordine
             </Button>
@@ -212,8 +213,7 @@ export default function Cart() {
               onClick={(e) => {
                 e.stopPropagation();
                 handleClearCart();
-              }} 
-              className="w-100"
+              }}
             >
               Svuota Carrello
             </Button>
