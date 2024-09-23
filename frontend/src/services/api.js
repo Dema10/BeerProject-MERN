@@ -109,7 +109,10 @@ export const deleteComment = (commentId) => api.delete(`/comments/${commentId}`)
 export const addReplyToComment = (commentId, replyData) => api.post(`/comments/${commentId}/reply`, replyData);
 
 // Orders
-export const getOrders = () => api.get('/orders');
+export const getOrders = (params) => {
+    const queryString = new URLSearchParams(params).toString();
+    return api.get(`/orders?${queryString}`);
+};
 export const getUserOrders = () => api.get('/orders/myorders');
 export const createOrder = (orderData) => api.post('/orders', orderData);
 export const updateOrderStatus = (orderId, status) => api.patch(`/orders/${orderId}/status`, { status });
@@ -139,11 +142,20 @@ export const createStockMaterial = (materialData) => api.post('/stock-materials'
         'Content-Type': 'multipart/form-data',
     },
 });
-export const updateStockMaterial = (id, materialData) => api.patch(`/stock-materials/${id}`, materialData, {
-    headers: {
+export const updateStockMaterial = (id, materialData) => {
+    console.log('Updating stock material:', id, materialData);
+    return api.patch(`/stock-materials/${id}`, materialData, {
+      headers: {
         'Content-Type': 'multipart/form-data',
-    },
-});
+      },
+    }).then(response => {
+      console.log('Stock material update response:', response.data);
+      return response;
+    }).catch(error => {
+      console.error('Error updating stock material:', error);
+      throw error;
+    });
+  };
 export const deleteStockMaterial = (id) => api.delete(`/stock-materials/${id}`);
 
 // Cart

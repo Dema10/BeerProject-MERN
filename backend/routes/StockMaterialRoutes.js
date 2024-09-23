@@ -64,6 +64,7 @@ router.post('/', authMiddleware, isAdmin, cloudinaryUploader.single("img"), asyn
 // UPDATE a stock material (admin only)
 router.patch('/:id', authMiddleware, isAdmin, cloudinaryUploader.single("img"), async (req, res) => {
     try {
+        console.log('Updating stock material:', req.params.id, req.body);
         const stockMaterialData = req.body;
         const oldStockMaterial = await StockMaterial.findById(req.params.id);
 
@@ -91,8 +92,10 @@ router.patch('/:id', authMiddleware, isAdmin, cloudinaryUploader.single("img"), 
             { new: true, runValidators: true }
         );
 
+        console.log('Updated stock material:', updatedStockMaterial);
         res.json(updatedStockMaterial);
     } catch (err) {
+        console.error('Error in stock material update:', err);
         res.status(400).json({ message: err.message });
     }
 });

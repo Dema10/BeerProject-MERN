@@ -30,25 +30,59 @@ const validateOrderAndCalculateTotal = async (beers) => {
 // GET all orders (admin only)
 router.get('/', authMiddleware, isAdmin, async (req, res) => {
     try {
-        const { page = 1, limit = 10 } = req.query;
-        const orders = await Order.find()
-            .populate('user', 'name email')
-            .populate('beers.beer', 'name price')
-            .limit(limit * 1)
-            .skip((page - 1) * limit);
+        const { page = 1, limit = 10, sort = '-createdAt' } = req.query;
+        console.log('Received query params:', { page, limit, sort });
+
+        let sortOption = {};
+        let aggregatePipeline = [];
+
+        // Gestione dell'ordinamento
+        if (sort === 'totalQuantity' || sort === '-totalQuantity') {
+            console.log('Using totalQuantity sorting');
+            aggregatePipeline = [
+                { $addFields: { 
+                    totalQuantity: { $sum: "$beers.quantity" } 
+                }},
+                { $sort: { totalQuantity: sort.startsWith('-') ? -1 : 1 } },
+                { $skip: (Number(page) - 1) * Number(limit) },
+                { $limit: Number(limit) }
+            ];
+        } else {
+            if (sort.startsWith('-')) {
+                sortOption[sort.substr(1)] = -1;
+            } else {
+                sortOption[sort] = 1;
+            }
+            aggregatePipeline = [
+                { $sort: sortOption },
+                { $skip: (Number(page) - 1) * Number(limit) },
+                { $limit: Number(limit) }
+            ];
+        }
+
+        // Esegui l'aggregazione
+        let orders = await Order.aggregate(aggregatePipeline);
+
+        // Popola il campo 'user' dopo l'aggregazione
+        orders = await Order.populate(orders, [
+            { path: 'user', select: 'name surname' },
+            { path: 'beers.beer', select: 'name' }
+        ]);
 
         const count = await Order.countDocuments();
 
         res.json({
             orders,
-            currentPage: page,
-            totalPages: Math.ceil(count / limit),
+            currentPage: Number(page),
+            totalPages: Math.ceil(count / Number(limit)),
             totalOrders: count
         });
     } catch (err) {
+        console.error('Error in order retrieval:', err);
         res.status(500).json({ message: err.message });
     }
 });
+
 
 // GET user's orders
 router.get('/myorders', authMiddleware, isAuthenticated, async (req, res) => {
@@ -132,12 +166,21 @@ router.post('/', authMiddleware, isAuthenticated, async (req, res) => {
 // UPDATE order status (admin only)
 router.patch('/:id/status', authMiddleware, isAdmin, async (req, res) => {
     try {
-        const updatedOrder = await Order.findByIdAndUpdate(
-            req.params.id,
-            { status: req.body.status },
-            { new: true }
-        );
-        res.json(updatedOrder);
+        const { status } = req.body;
+        const order = await Order.findById(req.params.id).populate('beers.beer');
+
+        if (!order) {
+            return res.status(404).json({ message: 'Ordine non trovato' });
+        }
+
+        if (order.status !== 'pending' && status === 'pending') {
+            return res.status(400).json({ message: 'Non è possibile tornare allo stato "pending" da uno stato successivo' });
+        }
+
+        order.status = status;
+        await order.save();
+
+        res.json(order);
     } catch (err) {
         res.status(400).json({ message: err.message });
     }
