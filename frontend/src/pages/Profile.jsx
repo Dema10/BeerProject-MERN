@@ -1,15 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Container, Row, Col, Button, Form, Image } from 'react-bootstrap';
-import { PencilSquare } from 'react-bootstrap-icons';
-import { getUserData, updateUserProfile } from '../services/api';
+import { Container, Row, Col, Button, Form, Image, Modal } from 'react-bootstrap';
+import { PencilSquare, Trash } from 'react-bootstrap-icons';
+import { getUserData, updateUserProfile, deleteUserAccount } from '../services/api';
 import '../Spinner.css';
 import ImageUploadModal from '../components/ImageUploadModal';
+import { useNavigate } from 'react-router-dom';
 
-export default function UserProfile() {
+export default function Profile() {
   const [user, setUser] = useState(null);
   const [editing, setEditing] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [userData, setUserData] = useState({ name: '', surname: '', email: '' });
+  const  navigate = useNavigate();
 
   const fetchUserData = useCallback(async () => {
     try {
@@ -73,6 +76,17 @@ export default function UserProfile() {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    try {
+      await deleteUserAccount(user._id);
+      localStorage.removeItem('token');
+      navigate('/');
+      window.dispatchEvent(new Event('storage'));
+    } catch (error) {
+      console.error('Errore nell\'eliminazione dell\'account:', error);
+    }
+  };
+
   if (!user) {
     return <div className='spinner'></div>;
   }
@@ -86,7 +100,7 @@ export default function UserProfile() {
             variant="primary"
             className="position-absolute rounded-circle p-0"
             onClick={() => setShowEditModal(true)}
-            style={{ width: '40px', height: '40px', right: '280px', top:'40px' }}
+            style={{ width: '40px', height: '40px' }}
           >
             <PencilSquare className="pb-1 fs-5" />
           </Button>
@@ -134,8 +148,12 @@ export default function UserProfile() {
               <h1>{user.name} {user.surname}</h1>
               <p className='fs-3'>Email: {user.email}</p>
               <p className='fs-4'>Ruolo: {user.role}{user && user.role !== 'admin' &&<small className='opacity-50'> (non mdoficabile)</small>}</p>
-              <Button variant="warning" onClick={handleEditClick}>
+              <Button className='me-2' variant="warning" onClick={handleEditClick}>
                 Modifica
+              </Button>
+              <Button variant="danger" onClick={() => setShowDeleteModal(true)}>
+                <Trash className="me-2 mb-1" />
+                Elimina Account
               </Button>
             </>
           )}
@@ -149,6 +167,22 @@ export default function UserProfile() {
         onSubmit={handleUpdateAvatar}
         mode="edit"
       />
+
+      {/* Modal di conferma per l'eliminazione dell'account */}
+      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Conferma eliminazione account</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>Sei sicuro di voler eliminare il tuo account? Questa azione non può essere annullata.</Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
+            Annulla
+          </Button>
+          <Button variant="danger" onClick={handleDeleteAccount}>
+            Elimina Account
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </Container>
   );
 }
