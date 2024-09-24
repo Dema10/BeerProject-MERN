@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Container, Row, Col, Button, Form, Image } from 'react-bootstrap';
 import { PencilSquare } from 'react-bootstrap-icons';
 import { getUserData, updateUserProfile } from '../services/api';
@@ -11,18 +11,30 @@ export default function UserProfile() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [userData, setUserData] = useState({ name: '', surname: '', email: '' });
 
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const userData = await getUserData();
-        setUser(userData);
-        setUserData({ name: userData.name, surname: userData.surname, email: userData.email });
-      } catch (error) {
-        console.error('Errore nel caricamento dei dati utente:', error);
-      }
-    };
-    fetchUserData();
+  const fetchUserData = useCallback(async () => {
+    try {
+      const userData = await getUserData();
+      setUser(userData);
+      setUserData({ name: userData.name, surname: userData.surname, email: userData.email });
+    } catch (error) {
+      console.error('Errore nel caricamento dei dati utente:', error);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchUserData();
+
+    const handleProfileUpdate = () => {
+      fetchUserData();
+    };
+
+    window.addEventListener('profileUpdated', handleProfileUpdate);
+
+    return () => {
+      window.removeEventListener('profileUpdated', handleProfileUpdate);
+    };
+  }, [fetchUserData]);
+
 
   const handleUpdateAvatar = async (imageData) => {
     try {
@@ -32,6 +44,7 @@ export default function UserProfile() {
       const updatedUser = await updateUserProfile(formData);
       setUser(updatedUser);
       setShowEditModal(false);
+      window.dispatchEvent(new Event('profileUpdated'));
     } catch (error) {
       console.error('Errore nell\'aggiornamento dell\'avatar:', error);
     }
@@ -51,9 +64,10 @@ export default function UserProfile() {
 
   const handleSave = async () => {
     try {
-      await updateUserProfile(userData);
+      const updatedUser = await updateUserProfile(userData);
+      setUser(updatedUser);
       setEditing(false);
-      setUser(userData);
+      window.dispatchEvent(new Event('profileUpdated'));
     } catch (error) {
       console.error('Errore nel salvataggio:', error);
     }

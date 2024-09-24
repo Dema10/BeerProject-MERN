@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Navbar, Nav, Container, NavDropdown, Image } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
 import { getUserData } from '../services/api';
@@ -11,34 +11,40 @@ export default function NavBar() {
     const [user, setUser] = useState(null);
     const navigate = useNavigate();
   
-    useEffect(() => {
-      const checkLoginStatus = async () => {
-        const token = localStorage.getItem("token");
-        if (token) {
-          try {
-            const userData = await getUserData();
-            setUser(userData);
-            setIsLoggedIn(true);
-          } catch (err) {
-            console.error("Token non trovato", err);
-            localStorage.removeItem("token");
-            setIsLoggedIn(false);
-            setUser(null);
-          }
-        } else {
+    const checkLoginStatus = useCallback(async () => {
+      const token = localStorage.getItem("token");
+      if (token) {
+        try {
+          const userData = await getUserData();
+          setUser(userData);
+          setIsLoggedIn(true);
+        } catch (err) {
+          console.error("Token non valido", err);
+          localStorage.removeItem("token");
           setIsLoggedIn(false);
           setUser(null);
         }
-      };
+      } else {
+        setIsLoggedIn(false);
+        setUser(null);
+      }
+    }, []);
   
+    useEffect(() => {
       checkLoginStatus();
   
+      const handleProfileUpdate = () => {
+        checkLoginStatus();
+      };
+  
+      window.addEventListener("profileUpdated", handleProfileUpdate);
       window.addEventListener("storage", checkLoginStatus);
   
       return () => {
+        window.removeEventListener("profileUpdated", handleProfileUpdate);
         window.removeEventListener("storage", checkLoginStatus);
       };
-    }, []);
+    }, [checkLoginStatus]);
   
     const handleLogout = () => {
       localStorage.removeItem("token");

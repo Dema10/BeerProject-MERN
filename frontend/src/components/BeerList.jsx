@@ -105,6 +105,7 @@ export default function BeerList({ beers: initialBeers, currentUser, setBeers, i
               <Card.Text>{beer.description}</Card.Text>
               <Card.Text>Disponibili: {beer.quantity}</Card.Text>
               <div className="mt-auto">
+                {currentUser && currentUser.role !== 'admin' && (
                 <Button 
                   variant={isDashboard ? "outline-danger" : "outline-primary"}
                   onClick={() => handleLikeAction(beer._id)}
@@ -114,6 +115,7 @@ export default function BeerList({ beers: initialBeers, currentUser, setBeers, i
                   {isDashboard ? <HandThumbsDown /> : <HandThumbsUp />} 
                   {isDashboard ? "Rimuovi" : beer.likes.length}
                 </Button>
+                )}
 
                 {!isDashboard && (
                   <Button 
@@ -125,6 +127,7 @@ export default function BeerList({ beers: initialBeers, currentUser, setBeers, i
                   </Button>
                 )}
 
+                {currentUser && currentUser.role !== 'admin' && (
                 <Button 
                   variant="outline-success" 
                   onClick={() => handleAddToCart(beer._id)}
@@ -133,6 +136,7 @@ export default function BeerList({ beers: initialBeers, currentUser, setBeers, i
                 >
                   <CartPlus /> Carrello
                 </Button>
+                )}
               </div>
             </Card.Body>
             {!isDashboard && expandedBeerId === beer._id && (
