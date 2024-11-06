@@ -397,18 +397,6 @@ const renderStatusOptions = (currentStatus) => {
                   ))}
                 </tbody>
               </Table>
-              <div className="d-flex justify-content-center mt-3">
-                {[...Array(totalPages).keys()].map((page) => (
-                  <Button
-                    key={page + 1}
-                    variant={currentPage === page + 1 ? "primary" : "outline-primary"}
-                    onClick={() => handlePageChange(page + 1)}
-                    className="mx-1"
-                  >
-                    {page + 1}
-                  </Button>
-                ))}
-              </div>
             </Card.Body>
           </Card>
 

@@ -5,7 +5,7 @@ export default function BeerCarousel({ carouselImages }) {
 
   if (images.length === 0) {
     return (
-      <div className="mt-3" style={{
+      <div className="mt-5" style={{
         height: '400px',
         display: 'flex',
         alignItems: 'center',
@@ -20,7 +20,7 @@ export default function BeerCarousel({ carouselImages }) {
   }
 
   return (
-    <Carousel className='mt-3'>
+    <Carousel className='mt-5'>
       {images.map((image) => (
         <Carousel.Item key={image._id}>
           <img

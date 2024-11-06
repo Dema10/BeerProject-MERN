@@ -99,11 +99,11 @@ export default function NavBar() {
                   <Nav.Link as={Link} to="/profile" className="custom-link text-decoration-none ps-2 my-2">
                     <Person className="pb-1 fs-5" /> Profile
                   </Nav.Link>
-                  {user.role === 'admin' && (
+{/*                   {user.role === 'admin' && (
                     <Nav.Link as={Link} to="/admin/settings" className="custom-link text-decoration-none ps-2 mt-2 mb-2">
                       <PersonGear className="pb-1 fs-5" /> Users Settings
                     </Nav.Link>
-                  )}
+                  )} */}
                 </div>
                 <NavDropdown.Divider style={{borderTopColor:"#00ff84"}}/>
                 <button onClick={handleLogout} className="btn btn-outline-light ms-2 my-1">
